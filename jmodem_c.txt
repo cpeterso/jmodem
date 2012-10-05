@@ -1,0 +1,473 @@
+
+                                  J M O D E M
+                         *  The Microsoft C Version  *
+                               February 19, 1990
+                               Richard B. Johnson
+                              405 Broughton Drive
+                          Beverly Massachusetts 01915
+                               BBS (508) 922-3166
+
+          Introduction.
+
+          JMODEM was first introduced about two years ago. It has en-
+          joyed a steady increase in popularity around the world. It
+          has even been explained in some detail in John Dvorak's book
+          on PC communications; Dvorak's Guide to PC Telecommunica-
+          tions, 1990, Osborne-McGraw-Hill, 2600 Tenth Street,
+          Berkely, CA.
+
+          JMODEM was first written in assembly language. Since this
+          language is hard to read and use, it has been difficult for
+          communications program developers to incorporate it into
+          their programs directly. Instead it must be executed as an
+          external protocol. Now JMODEM has been written in the C
+          Language. C has become the de-facto standard for portable
+          code development even though there isn't presently any code
+          that is truly portable across many different machines. The
+          writing of JMODEM in C will make it easier for software de-
+          velopers throughout the world to use this very useful pro-
+          tocol.
+
+          You can use this new version of JMODEM just as the older
+          versions written in assembly. It has a new color sign-on
+          screen and status-block windows that overlap. Although the
+          new JMODEM.EXE code is larger than the assembly-language
+          version, JMODEM.COM, the program still executes very fast
+          because much effort has been taken to streamline the C code.
+          JMODEM.COM required 64 k of RAM (one segment) to execute
+          properly. JMODEM.EXE requires 79 k to allow the screens to
+          be written properly, and 66 k of free RAM to execute without
+          aborting although the previous screen content will be lost.
+          Like all versions of JMODEM, this version is 100% compatible
+          with all previous version including Beta version 1.00. From
+          it's inception, the essential structure of JMODEM has never
+          been changed.
+
+          How to install JMODEM.
+
+          JMODEM executes best from a batch file as an external pro-
+          tocol for any of the communications programs that have ex-
+          ternal-protocol capability. A typical communications program
+          is TELIX.
+
+
+
+
+
+
+
+                                     - 1 -
+                                               JMODEM, the C Version
+
+
+
+          Here is a batch file used with TELIX for uploads:
+
+          @ECHO OFF
+          Rem * JMODEM TELIX Upload batch file.
+          C:\TELIX\JMODEM S1 %3
+          Rem           | ||  |_________ file name (passed by TELIX)
+          Rem           | ||____________ COM port (1 - 4)
+          Rem           | |_____________ Send
+          Rem           |_______________ Path and name of JMODEM
+
+
+          This is a batch file used with TELIX for downloads:
+
+          @ECHO OFF
+          Rem * JMODEM TELIX Download batch file.
+          C:\TELIX\JMODEM R1 %3
+          Rem           | ||  |_________ file name (passed by TELIX)
+          Rem           | ||____________ COM port (1 - 4)
+          Rem           | |_____________ Receive
+          Rem           |_______________ Path and name of JMODEM
+
+
+          This is a batch file used for PCPLUS (PROCOMM) uploads:
+
+          @ECHO OFF
+          Rem * JMODEM PCPLUS Upload batch file.
+          C:\TELIX\JMODEM S1 %1
+          Rem           | ||  |_________ file name (passed by PCPLUS)
+          Rem           | ||____________ COM port (1 - 4)
+          Rem           | |_____________ Send
+          Rem           |_______________ Path and name of JMODEM
+
+
+          This is a batch file for PCPLUS (PROCOMM) ownloads:
+
+          @ECHO OFF
+          Rem * JMODEM PCPLUS Download batch file.
+          C:\TELIX\JMODEM R1 %1
+          Rem           | ||  |_________ file name (passed by PCPLUS)
+          Rem           | ||____________ COM port (1 - 4)
+          Rem           | |_____________ Receive
+          Rem           |_______________ Path and name of JMODEM
+
+          You can chop this text out with an editor and create your
+          batch files quickly and correctly. PCPLUS passes the file-
+          name as the %1 parameter and TELIX uses the %3 parameter.
+          JMODEM does not need to know anything else about your system
+          to operate. It does not even need to know the baud-rate or
+          other communications parameters. All it needs to know about
+          is the file name and the communications adapter port to use.
+
+
+
+
+                                     - 2 -
+                                               JMODEM, the C Version
+
+
+
+          JMODEM doesn't care if you are using a 19,200 baud modem
+          with the DTE locked at high-speed or a 300 baud modem on a
+          lamp-cord. It is very smart about communications and handles
+          lost carriers (hangup) and flow-control in a very simple way
+          which will be explained in detail later.
+
+          If you only want to try JMODEM without having to install it,
+          you need only to activate the JMODEM protocol on a BBS sys-
+          tem, then "shell to DOS" and execute it manually from the
+          DOS prompt. You will be pleasantly surprised at how rapidly
+          it can transfer a file and how well it executes over net-
+          works.
+
+          How JMODEM works.
+
+          JMODEM uses variable-length records called blocks. These
+          blocks start with 512 data-bytes and increase in length to a
+          maximum of 8192 bytes per block. There is a 6-byte overhead
+          associated with each block so the percentage of overhead
+          starts at a fairly high 0.1 percent and decreases to a very
+          low 0.07 percent as the transmission progresses. The block
+          length will increase in 512-byte increments as long as there
+          are no errors requiring retransmission. Should an error
+          occur, the block-size is cut in half. This continues until
+          the block-size is as short as 64 bytes.
+
+          The blocks may actually be of any length but never exceed
+          the maximum allowed. An attempt is made to reduce the amount
+          of data that needs to be transmitted by compressing each
+          block before transmission. Since much data is already com-
+          pressed, being from ".ZIP" files and such, it is possible
+          that "compression" may actually cause an increase in block-
+          length. JMODEM will send a compressed block only if it is
+          shorter than the non-compressed block.
+
+          Since it takes time to compress and expand data, only the
+          simplest and quickest compression method is used. It is very
+          effective with ".EXE" files that contain large blocks of
+          binary nulls and most text files but it is not very effec-
+          tive with highly compressed archive files. The compression
+          method is called "run-length-limited" or more explicitly
+          "how many of what kind". Basically, the block is searched
+          for groups if similar characters. If many similar characters
+          are found, compression consists of sending a sentinel byte
+          of hexadecimal BB, followed by a two-byte amount, and this
+          followed by the byte to be repeated.
+
+          In the following example we have a string of spaces (20
+          hex).
+
+
+
+
+
+                                     - 3 -
+                                               JMODEM, the C Version
+
+
+
+          Before compression:
+                               ( 18 bytes )
+            20 20 20 20 20 20 20 20 20 20 20 34 37 87 EF FF 3A 23
+
+
+          After compression:
+                               ( 11 bytes )
+            BB 0B 00 20 34 37 87 EF FF 3A 23
+
+          The blocks could actually get longer because the sentinel
+          byte could be present in the data:
+
+          Before compression:
+                               ( 9 bytes )
+            BB 00 BB AF EF BB 00 AE EF
+
+
+          After compression:
+                               ( 16 bytes )
+            BB 01 00 BB 00 BB 01 00 BB AF BB 01 00 BB AE EF
+
+          As soon as the encoded length exceeds the data block length,
+          compression is abandoned and the non-compressed block is
+          sent. JMODEM sends a byte that tells the receiver if the
+          data is compressed or not. This same byte tells the receiver
+          when the end-of-file has occurred so JMODEM is able to
+          preserve exact file-length.
+
+                               The JMODEM block.
+
+
+          The JMODEM block looks like this:
+
+           |< --------- First byte sent / received
+          20 00 01 01 .. .. .. .. .. AE 01
+           |  |  |  |        |        |  |___ CRC (high byte)
+           |  |  |  |        |        |______ CRC (low byte)
+           |  |  |  |        |_______________ data bytes
+           |  |  |  |________________________ type of block
+           |  |  |___________________________ block number
+           |  |______________________________ block length (high byte)
+           |_________________________________ block length (low byte)
+
+
+          The Block length:
+
+          The block length is a WORD (16 bits). This allows the blocks
+          to be 65,535 bytes long although in practice the length is
+          not allowed to exceed 8192 bytes (plus overhead). The block-
+          length is the length of the entire JMODEM block, not just
+          the data-bytes.
+
+
+
+                                     - 4 -
+                                               JMODEM, the C Version
+
+
+
+          The Block number:
+
+          The block number is a BYTE. It starts at 1 and becomes zero
+          again after block 255. It is used to make certain that all
+          receiption errors are detected.
+
+          The Block type:
+
+          This BYTE is bit-mapped to tell the receiver what kind of
+          block has been sent. Presently there are three kinds of
+          blocks:
+
+                00000000B       Hex 00  ( Normal data )
+                00000001B       Hex 01  ( Compressed data )
+                00000010B       Hex 02  ( End of file )
+
+          The CRC:
+
+          The CRC is a WORD (16 bits). It is not a "standard" type of
+          CRC because, unless done with hardware, a standard 16-bit
+          polynoimial would take several seconds to calculate for a
+          long block. Instead it uses a rapid rotate and sum algoritm
+          that is probably just as effective as the more "standard"
+          polynominials.
+
+          The CRC is generated using this polynomial:
+
+          X =  X + X^(2(n-mod 7)).......  Where n = t(n-1)
+                                         And t = string length
+
+          It has the advantage of simplicity in assembly-language
+          programming and will detect errors with a probability of
+          about  one undetected error in 2^132 (which is a very large
+          number). It does not correct errors so its not important to
+          use some "standard" function to generate the CRC.
+
+          The C code shows how easy it is to create and check this
+          kind of CRC.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                     - 5 -
+                                               JMODEM, the C Version
+
+
+                           The JMODEM Communications
+                                Hardware Control
+
+          When JMODEM is first loaded for execution it checks the
+          state of the modem-control leads. If there is no modem
+          carrier detected, it assumes that you have connected two PCs
+          together without a modem and will not bother to check for a
+          dropped carrier during execution.
+
+          Since JMODEM must exercise flow-control so it can be used
+          with high-speed modems with fixed baud rates, it also as-
+          sumes that at the time at which it is first executed, the
+          modem will be requesting data because there will have been
+          very little I/O over the previous few seconds. JMODEM stores
+          the state of RTS/CTS and DTR/DSR and uses this as a refer-
+          ence. When transmitting data, should JMODEM find that the
+          state of these modem-control leads has changed, it waits
+          until the modem-control leads have reverted back to the
+          initial state before sending any more data. This allows ANY
+          modem to exercise flow-control with JMODEM, even those that
+          use "pin 4" instead of "pin 20". When JMODEM is waiting, it
+          checks to verify that the modem carrier has not been drop-
+          ped. If the carrier is dropped, or if the user aborts,
+          JMODEM will exit, setting a DOS ERRORLEVEL code.
+
+          You can abort JMODEM at any time by hitting Ctrl-Break or
+          Ctrl-C. It will take several seconds for JMODEM to abort
+          because it does not continually check these keys. Unlike
+          previous versions, JMODEM erases the files from aborted
+          downloads. Also, JMODEM will abort if it is unable to rename
+          a file in the following example.
+
+          Suppose you wish to download a file called VIRUS.EXE. Sup-
+          pose also that VIRUS.EXE already exists. Instead of over-
+          writing your previous version of VIRUS.EXE, JMODEM has al-
+          ways been nice and renamed it to VIRUS.OLD before creating a
+          new file. With previous versions of JMODEM, if VIRUS.OLD
+          already existed, JMODEM would have deleted it before renam-
+          ing the present file to ".OLD". This no longer is done.
+          JMODEM never deletes ANYTHING anymore except it's own abort-
+          ed download. This should reduce the number of threats I have
+          received!
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                     - 6 -
+                                               JMODEM, the C Version
+
+
+                               The C programmer's
+                                Guide to JMODEM
+
+          Included within this package should be the following files:
+          JMODEM          This is the MAKE file
+          JMODEM_A  C     Contains the _main() routine entry point.
+          JMODEM_B  C     Allocates memory, parses input strings.
+          JMODEM_C  C     All of the file I/O is in this file.
+          JMODEM_D  C     Data compression/expansion, CRC calculation
+          JMODEM_E  C     Communications I/O interrupt service, etc.
+          JMODEM_F  C     Screen I/O (windows, etc)
+          JMODEM    H     Contains JMODEM globals and data structures.
+          SCREEN    H     Screen definitions, prototypes, structures
+          UART      H     Definitions for the 8250 UART
+
+          If you have MicroSoft 'C' version 5.0 or later, and if your
+          environment and paths are properly set up, you should be
+          able to type:
+
+                MAKE JMODEM
+                ... and a brand new version of JMODEM will be created.
+
+          Just as in the MASM language files, the source code is
+          strongly-typed. All function prototypes are declared and no
+          defaults are used. You can compile at warning-level 3, the
+          most stringent level available with Microsoft compilers, and
+          you will get no errors at all.
+
+          You may modify JMODEM for your own use, but  P L E A S E  do
+          NOT distribute the modified version on BBS systems because I
+          do not wish to support 222,500 versions of JMODEM! If you
+          find a bug, or wish to improve or add something that will
+          increase the value of JMODEM without making it incompatible
+          with previous versions, please upload your improvements to
+          my BBS system and I may include the revisions (with your
+          name attached) in an upcoming version. Note that there are 6
+          "type" bits available in the JMODEM control-byte that could
+          be used to tell the receiver that another file is coming,
+          etc., (for batch). Things like this could be added without
+          destroying compatibility with previous versions.
+
+          MicroSoft C seems to have several bugs one of which affects
+          files that are very long (over 256k). My first attempts to
+          use C files under MicroSoft for JMODEM used the stream-I/O
+          (FILE *) type of files. This resulted in corruption of long
+          files. Therefore I implemented the UNIX/DOS type of file-I/O
+          that uses handles rather than file-control blocks. These
+          work rather well.
+
+          In version V3.01, I had used both _calloc() and _malloc() at
+          the same time. Although Microsoft doesn't mention it in
+
+
+
+
+                                     - 7 -
+                                               JMODEM, the C Version
+
+
+          their texts, apparently, these two memory allocation rou-
+          tines don't "talk" to each other so I had buffers that
+          overlapped, causing data corruption. Also I attempted to
+          compare two pointers against each other in the data-com-
+          pression routine which the complier let me get away with,
+          but the result was that data was not being compressed
+          (sometimes).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                     - 8 -
+
